@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "led_matrix")(type "KiCad")(uri "${KIPRJMOD}/led_matrix.pretty")(options "")(descr ""))
+  (lib (name "Microcontroller")(type "KiCad")(uri "${KIPRJMOD}/Microcontroller.pretty")(options "")(descr ""))
+)
