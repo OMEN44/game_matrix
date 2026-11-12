@@ -177,26 +177,68 @@ namespace Matrix
             this->dirty_row = 0b11111111;
         }
 
-        void draw_line(int8_t x1, int8_t y1, int8_t x2, int8_t y2) {
-            int8_t dx = x2 - x1;
-            int8_t dy = y2 - y1;
-            float m = static_cast<float>(dy) / static_cast<float>(dx);
+        void draw_line_low(int8_t x1, int8_t y1, int8_t x2, int8_t y2, bool on = true) {
+            int8_t y = y1;
+            float dx = static_cast<float>(x2 - x1);
+            float dy = static_cast<float>(y2 - y1);
+            float yi = 1.0;
 
-            Serial.printf("dx: %d, dx: %d, m: %f\n", dx, dy, m);
-            float accumulator = y1;
-            std::vector<std::pair<uint8_t, uint8_t>> points;
-            for (int x = 0; x < dx; x++) {
-                int8_t y = static_cast<int8_t>(accumulator);
-                if (x >= 0 && x <= 15 && y >= 0 && y <= 15) {
-                    points.push_back({ x, y });
-                }
-                accumulator += m;
+            if (dy < 0) {
+                yi = -1;
+                dy = -dy;
             }
 
-            for (const auto point : points) {
-                set_pixel(point.first, point.second, true);
+            float D = (2 * dy) - dx;
+            for (int x = x1; x <= x2; x++) {
+                set_pixel(x, y, on);
+                if (D > 0) {
+                    y = y + yi;
+                    D = D + (2 * (dy - dx));
+                } else {
+                    D = D + 2 * dy;
+                }
             }
         }
+
+        void draw_line_high(int8_t x1, int8_t y1, int8_t x2, int8_t y2, bool on = true) {
+            int8_t x = x1;
+            float dx = static_cast<float>(x2 - x1);
+            float dy = static_cast<float>(y2 - y1);
+            float xi = 1.0;
+
+            if (dx < 0) {
+                xi = -1;
+                dx = -dx;
+            }
+
+            float D = (2 * dx) - dy;
+            for (int y = y1; y <= y2; y++) {
+                set_pixel(x, y, on);
+                if (D > 0) {
+                    x = x + xi;
+                    D = D + (2 * (dx - dy));
+                } else {
+                    D = D + 2 * dx;
+                }
+            }
+        }
+
+        void draw_line(int8_t x1, int8_t y1, int8_t x2, int8_t y2, bool on = true) {
+
+            // fix coordinate order
+            static int count = 0;
+            if (abs(y2 - y1) < abs(x2 - x1)) {
+                if (x1 > x2)
+                    draw_line_low(x2, y2, x1, y1, on);
+                else draw_line_low(x1, y1, x2, y2, on);
+            } else {
+                if (y1 > y2)
+                    draw_line_high(x2, y2, x1, y1, on);
+                else draw_line_high(x1, y1, x2, y2, on);
+            }
+        }
+
+
     };
 }
 
@@ -212,19 +254,45 @@ void setup() {
 
 int v = 0;
 long last_update = millis();
+int x = 0;
+int y = 0;
+int x_dir = 0;
+int y_dir = 0;
+
+bool on = true;
 
 void loop() {
-    matrix.clear();
-    matrix.draw_line(0, 0, 7, 15);
-    matrix.draw_line(0, 0, 15, 15);
-    matrix.draw_line(0, 0, 15, 7);
+    // matrix.clear();
+    // Serial.printf("%d, %d\n", x, y);
+    matrix.draw_line(8, 8, x, y, on);
 
     matrix.update();
-    if (millis() - last_update > 500) {
-        Serial.printf("(3, 5) -> (10, %d)\n", v % 10);
+    if (millis() - last_update > 25) {
+
+        if (x == 15 && y == 15) {
+            x_dir = -1;
+            y_dir = 0;
+        } else if (x == 0 && y == 15) {
+            x_dir = 0;
+            y_dir = -1;
+        } else if (x == 15 && y == 0) {
+            x_dir = 0;
+            y_dir = 1;
+        } else if (x == 0 && y == 0) {
+            x_dir = 1;
+            y_dir = 0;
+        }
+
+        if (x == 0 && y == 1)
+            on = !on;
+
+        x += x_dir;
+        y += y_dir;
+
+
         v++;
-        if (v > 9999) {
-            v = -999;
+        if (v > 31) {
+            v = 0;
         }
         last_update = millis();
     }
